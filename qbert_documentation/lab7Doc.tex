@@ -1,0 +1,910 @@
+%This imports the file containing all of the configuration for the document
+\input{lib/preamble.tex}
+\usepackage{tikz}
+\usetikzlibrary{fit,arrows,calc,positioning}
+
+%header and Footer set up
+\lhead{daw24} %, UBIT\_2}% Left Heading(Must by you and your partners UBIT name)
+\rhead{Lab 7: Q'bert}% Right Heading(Must be the title of the lab)
+\rfoot{Page \thepage}% Right Footer - Page numbers
+\lfoot{R1}% Left Footer
+
+% Start the document
+\begin{document}
+  %%%%%%%%%%%%%%%%%%%%%%%
+  %START OF THE DOCUMENT%
+  %%%%%%%%%%%%%%%%%%%%%%%
+
+  %Auto Generates the table of contents
+  \tableofcontents\newpage
+
+  %%%%%%%%%%
+  %OVERVIEW%
+  %%%%%%%%%%
+
+  %Section of document will be labeled numerically ex. 1,2,3.. for each time it is used
+\section{Lab 7 Overview}
+  Lab 7 is a version of the video game Q'bert(Gottlieb 1982) written in ARM
+  assembly language. Q'bert is depicted by the character 'Q' on a two 
+  dimmensional pyramid. Three types of enemies can be on the pyramid with
+  Q'bert. Balls and snake balls behave the same with the exception that the 
+  snake ball becomes a snake when it reaches the bottom of the pyramid. There
+  will not be more than two balls, and 1 snake on the pyramid at a time. Each
+  time Q'bert moves to a new square it is cleared of '///' characters and awards
+  the player points. Once all squares have been cleared the game begins again on
+  a new level with the uncleared squares and an increased game speed. Q'bert
+  begins the game with four lives. A life is lost whenever Q'bert jumps off the
+  pyramid or occupies the same square as a ball or snake. The game ends after two
+  minutes of gameplay. The objective of the game is for the player to score as
+  many points before lives are lost or the game ends due to two minute timer.
+  Ten points are awarded for each square cleared, and 100 points for each level
+  reached. The player also recieves 25 bonus points for each life remaining at
+  time out.
+  \subsection{Lab 7 Usage}
+   The UART, GPIO, and interrupts are all initialized when the game is started.
+   The puTTY terminal is cleared, a 0 is displayed on the seven-segment display,
+   and the RGB LED is set to white. An intro with instructions on how to play 
+   the game is written to the cleared puTTY terminal. The program then waits for 
+   interrupts, specifically a 'g' key press to start a new game, or a space bar 
+   press to quit the game. 
+  \subsection{Division of Work}
+   David was the sole member for this lab, and is responsible for all code and documentation. 
+\newpage
+  \subsection{Lab 7 Flow Chart}
+  \begin{center}
+    \begin{tikzpicture}[node distance=2cm, scale=.50, transform shape]
+      \node (0) [startstop] {start};
+      \node (1) [process, below of=0] {Setup UART0};
+      \node (2) [process, below of=1] {Setup GPIO};
+      \node (3) [process, below of=2] {Setup Interrupts};
+      \node (4) [process, below of=3] {Clear puTTY screen};
+      \node (5) [process, below of=4] {Display 0 on 7-seg};
+      \node (6) [process, below of=5] {Set RGB to white};
+      \node (7) [process, below of=6] {Write intro/instructions to puTTY};
+      \node (8) [decision, below of=7, yshift=-2cm] {Handle Interrupt};
+      \node (9) [startstop, below of=8, yshift=-2cm] {Stop};
+      %\node (10) [process, right of=8, xshift=3cm] {New game};      
+
+	\draw [arrow] (0) -- (1);
+      \draw [arrow] (1) -- (2);
+      \draw [arrow] (2) -- (3);
+      \draw [arrow] (3) -- (4);
+      \draw [arrow] (4) -- (5);
+      \draw [arrow] (5) -- (6);
+      \draw [arrow] (6) -- (7);
+      \draw [arrow] (7) -- (8);
+	\draw [arrow] (8) -- node[anchor=west]{Space Bar}(9);
+	%\draw [arrow] (8) -- node[anchor=south]{'g'}(10);
+	\draw [arrow] (8) -| ([xshift=2cm]8.east) |- (8.north);      
+    \end{tikzpicture}
+  \end{center}
+
+  \newpage
+  %%%%%%%%%%%%%
+  %SUBROUTINES%
+  %%%%%%%%%%%%%
+  \noindent
+  \section{Subroutines}
+  All subroutines are stored in the library file. Each routine is 
+  imported at the beginning of the file.\\\\ %"\\" skips a line
+
+  %%\begin{lstlisting}
+    \begin {enumerate}
+	\item{} newGame
+        \item{} gameOver
+	\item{} resetAllSquares
+	\item{} increaseLevel
+	\item{} removeQ
+	\item{} redrawQ
+	\item{} FIQ\_Handler
+	\item{} pauseGame
+	\item{} handleMoves
+	\item{} spawnEnemy
+	\item{} moveBall1
+	\item{} moveBall2
+	\item{} moveSnakeBall
+	\item{} moveSnake
+	\item{} randomNum
+
+	
+    \end {enumerate}
+  %%\end{lstlisting}
+
+\newpage
+  \subsection{newGame Routine}
+   \indent
+    This routine starts a new game. All values are reset for the new game.
+    This routine is predominately intended to be used from the intro/instruction
+    screen, or the game over screen but can be used at anytime the game is not
+    paused.
+   \vskip 8pt
+   \noindent
+   {\bf Usage }\\
+    The newGame routine first clears the screen of what is currently 
+    being displayed. The score us reset to zero. The number of enemies
+    currently on the pyramid is set to zero. All squares are set to 
+    uncleared. The level is set to one, and the lives are set to four.
+    A one is displayed on the seven-segment display to illustrate the 
+    current level. All four LEDs are turned on to represent that the 
+    player has four lives left. The RGB LED is set to green to show
+    that the game is currently running. Q'bert's('Q') position is set
+    to the starting position at the top of the pyramid, and the game
+    board is drawn with 'Q' at top. Timer0 and timer1 are enabled(started).
+ \vskip 8pt
+  \noindent
+
+%\newpage
+  \subsubsection{newGame Flow Chart}
+  \begin{center}
+    \begin{tikzpicture}[node distance=2cm, scale=.50, transform shape]
+      \node (0) [startstop] {start};
+      \node (1) [process, below of=0] {Clear Screen};
+      \node (2) [process, below of=1] {Reset score, enemies, squares, level, and lives};
+      \node (3) [process, below of=2] {Display 1 on 7-seg};
+      \node (4) [process, below of=3] {Turn on all four LEDs};
+      \node (5) [process, below of=4] {Set RGB LED to green};
+      \node (6) [process, below of=5] {Reset Q to starting position};
+      \node (7) [process, below of=6] {Draw the gameboard and 'Q'};
+      \node (8) [process, below of=7] {Enable timer0 and timer1};
+      \node (9) [startstop, below of=8] {Stop};
+
+      \draw [arrow] (0) -- (1);
+      \draw [arrow] (1) -- (2);
+      \draw [arrow] (2) -- (3);
+      \draw [arrow] (3) -- (4);
+      \draw [arrow] (4) -- (5);
+      \draw [arrow] (5) -- (6);
+      \draw [arrow] (6) -- (7);
+      \draw [arrow] (7) -- (8);
+      \draw [arrow] (8) -- (9);
+    \end{tikzpicture}
+  \end{center}
+
+
+\newpage
+  \subsection{gameOver Routine}
+   \indent
+     Displays the game over text when two minute timer is up or
+     when all lives are lost. The player my either press 'g' for 
+     a new game, or space bar to quit.
+   \vskip 8pt
+   \noindent
+   {\bf Usage }\\
+     This routine clears the current puTTY display and shows the 
+     game over text. The number of lives is multiplied by 25 and
+     added to the current score. This final score is then displayed
+     at the top of the screen. Both timers are disabled. The
+     IS\_GAMEOVER\_SCREEN is set. This is checked by other routines
+     in the FIQ handler to prevent certain key interrupts during the
+     game over screen.
+ \vskip 8pt
+  \noindent
+
+%\newpage
+  \subsubsection{gameOver Flow Chart}
+  \begin{center}
+    \begin{tikzpicture}[node distance=2cm, scale=.50, transform shape]
+      \node (0) [startstop] {start};
+      \node (1) [process, below of=0] {Clear Screen};
+      \node (2) [process, below of=1] {Display Game Over text};
+      \node (3) [process, below of=2] {SCORE += 4 * LIVES};
+      \node (4) [process, below of=3] {Update Score on screen};
+      \node (5) [process, below of=4] {Disable timer0 and timer1};
+      \node (6) [process, below of=5] {Set IS\_GAMEOVER\_SCREEN};
+      \node (7) [startstop, below of=6] {Stop};
+
+      \draw [arrow] (0) -- (1);
+      \draw [arrow] (1) -- (2);
+      \draw [arrow] (2) -- (3);
+      \draw [arrow] (3) -- (4);
+      \draw [arrow] (4) -- (5);
+      \draw [arrow] (5) -- (6);
+      \draw [arrow] (6) -- (7);
+    \end{tikzpicture}
+  \end{center}
+
+\newpage
+  \subsection{resetAllSquares Routine}
+   \indent
+     Squares are set when Q'bert has explored them. They need to be 
+     cleared at the start of a new game, or when proceeding to the
+     the next level. 
+   \vskip 8pt
+   \noindent
+   {\bf Usage }\\
+ 	A coutner register is set to zero. The first square DCD address
+ 	is loaded. The value in that address is cleared. Move to next. 
+        Store a zero and increment counter by one. Check if the counter
+        is equal to 22, and move to next address if not.
+ \vskip 8pt
+  \noindent
+
+%\newpage
+  \subsubsection{resetAllSquares Flow Chart}
+  \begin{center}
+    \begin{tikzpicture}[node distance=2cm, scale=.50, transform shape]
+        \node (0) [startstop] {start};
+	\node (1) [process, below of=0] {Set counter register to zero};
+	\node (2) [process, below of=1] {Load square DCD address};
+	\node (3) [process, below of=2] {Store a zero};
+	\node (4) [process, below of=3] {Load square DCD address plus counter, LSL 2};
+	\node (5) [process, below of=4] {Store a zero};
+	\node (6) [process, below of=5] {Incremenet counter};
+        \node (7) [decision, below of=6, yshift=-2cm] {Is remainder 22?};
+        \node (8) [startstop, below of=7, yshift=-1cm] {Stop};
+    
+        \draw[arrow] (0) -- (1);
+        \draw[arrow] (1) -- (2);
+        \draw[arrow] (2) -- (3);
+        \draw[arrow] (3) -- (4);
+        \draw[arrow] (4) -- (5);
+        \draw[arrow] (5) -- (6);
+        \draw[arrow] (6) -- (7);
+        \draw[arrow] (7) -- node [anchor=west] {yes} (8);
+        \draw[arrow] (7) -- node [anchor=south] {no} ([xshift=-4cm]7.west) |- (4);
+    \end{tikzpicture}
+  \end{center}
+
+\newpage
+  \subsection{increaseLevel Routine}
+   \indent
+    The level is increased to the next one whenever the player explores and
+    clears all the squares on the pyramid. Q'bert is moved back to the starting
+    positon, and all enemies are reset. The speed of the game is increased with each
+    level, not to exceed two player, or one enemy, moves every 0.1 seconds.   
+   \vskip 8pt
+   \noindent
+   {\bf Usage }\\
+     The LEVEL is increased by one. The new value is displayed on the 7-segment
+     display. One-hundred points are added to the score. Q'bert's X and Y positions
+     are set to the starting square at the top of the pyramid. BALL1\_SQUARE, 
+     BALL2\_SQUARE, SNAKEBALL\_SQUARE, and SNAKE\_SQUARE are all set to zero.
+     The screen is cleared and a new GAME\_BOARD is displayed. INC\_TIMER\_FLAG is
+     set and NUM\_BALLS is cleared to zero. 
+ \vskip 8pt
+  \noindent
+
+%\newpage
+  \subsubsection{inreaseLevel Flow Chart}
+  \begin{center}
+    \begin{tikzpicture}[node distance=2cm, scale=.50, transform shape]
+        \node (0) [startstop] {start};
+	\node (1) [process, below of=0] {LEVEL = LEVEL + 1};
+	\node (2) [process, below of=1] {display current level on 7-seg};
+	\node (3) [process, below of=2] {SCORE = SCORE + 100};
+	\node (4) [process, below of=3] {REST Q\_X\_POSITION to 15};
+	\node (5) [process, below of=4] {REST Q\_Y\_POSITION to 5};
+	\node (6) [process, below of=5] {Clear BALL1\_SQUARE};
+	\node (7) [process, below of=6] {Clear BALL2\_SQUARE};
+	\node (8) [process, below of=7] {Clear SNAKEBALL\_SQUARE};
+	\node (9) [process, below of=8] {Clear SNAKE\_SQUARE};
+	\node (10) [process, below of=9] {resetAllSquares};
+	\node (11) [process, below of=10] {Clear screen};
+	\node (12) [process, below of=11] {Redraw gameboard};
+	\node (13) [process, below of=12] {set INC\_TIMER\_FLAG};
+	\node (14) [process, below of=13] {Clear NUM\_BALLS};
+        \node (15) [startstop, below of=14, yshift=-1cm] {Stop};
+    
+        \draw[arrow] (0) -- (1);
+        \draw[arrow] (1) -- (2);
+        \draw[arrow] (2) -- (3);
+        \draw[arrow] (3) -- (4);
+        \draw[arrow] (4) -- (5);
+        \draw[arrow] (5) -- (6);
+        \draw[arrow] (6) -- (7);
+        \draw[arrow] (7) -- (8);
+        \draw[arrow] (8) -- (9);
+        \draw[arrow] (9) -- (10);
+        \draw[arrow] (10) -- (11);
+        \draw[arrow] (11) -- (12);
+        \draw[arrow] (12) -- (13);
+        \draw[arrow] (13) -- (14);
+        \draw[arrow] (14) -- (15);
+    \end{tikzpicture}
+  \end{center}
+
+\newpage
+  \subsection{removeQ Routine}
+   \indent
+	Replace 'Q' on the screen with a ' '(space).
+   \vskip 8pt
+   \noindent
+   {\bf Usage }\\
+	Use ansi excape secquence, ESC[\#;\#f to move to line \#, and
+   	column \#. Output a ' ' space to overwite the 'Q' that is 
+	currently there. 
+ \vskip 8pt
+  \noindent
+
+%\newpage
+  \subsubsection{removeQ Flow Chart}
+  \begin{center}
+    \begin{tikzpicture}[node distance=2cm, scale=.50, transform shape]
+        \node (0) [startstop] {start};
+	\node (1) [process, below of=0] {Use ansi escape sequence to move cursor};
+	\node (2) [process, below of=1] {Overwrite 'Q' with a ' '(space)};
+        \node (3) [startstop, below of=2] {Stop};
+    
+        \draw[arrow] (0) -- (1);
+        \draw[arrow] (1) -- (2);
+        \draw[arrow] (2) -- (3);
+    \end{tikzpicture}
+  \end{center}
+
+\newpage
+  \subsection{redrawQ Routine}
+   \indent
+     Routine that draws Q'bert ('Q') in his new position of the pyramid based
+     on key inputs from the player. Called twice every second for the first level,
+     twice every 0.9 seconds for the second level and 0.1 seconds less for every
+     level after. It will stop decrasing at 0.1 seconds.
+   \vskip 8pt
+   \noindent
+   {\bf Usage }\\
+	Check which direction Q'bert will be moved. Adjust Q'bert's X and Y 
+	position and update his square to refelect new position. Clear unexplored
+	square and check if all squares have been explored. Incease level if all have
+ 	been explored.  
+ \vskip 8pt
+  \noindent
+
+\newpage
+  \subsubsection{redrawQ Flow Chart}
+  \begin{center}
+    \begin{tikzpicture}[node distance=2cm, scale=.50, transform shape]
+        \node (0) [startstop] {start};
+        \node (1) [decision, below of=0, yshift=-1cm] {Q\_direction = up?};
+        \node (2) [decision, below of=1, yshift=-4cm] {Q\_direction = down?};
+        \node (3) [decision, below of=2, yshift=-4cm] {Q\_direction = right?};
+        \node (4) [decision, below of=3, yshift=-4cm] {Q\_direction = left?};
+        \node (5) [process, below of=4, yshift=-2cm] {Use ansi escape sequence to move cursor};
+        \node (6) [process, below of=5, yshift=-2cm] {Output a 'Q'};
+        \node (7) [process, below of=6, yshift=-2cm] {updateSquare};
+        \node (8) [decision, below of=7, yshift=-2cm] {All squares cleared?};
+        \node (9) [startstop, below of=8, yshift=-1cm] {Stop};
+        \node (21) [process, left of=2, xshift=-4cm] {Q\_X\_POSIYION -= 2};
+	\node (22) [process, below of =21] {Q\_Y\_POSITION += 4};
+        \node (23) [process, left of=4, xshift=-4cm] {Q\_X\_POSITION += 5};
+        \node (24) [process, below of =23] {Q\_Y\_POSITION += 2};
+        \node (25) [process, left of=8, xshift=-4cm] {increaseLevel};	
+        \node (31) [process, right of=1, xshift=4cm] {Q\_X\_POSIYION += 2};
+	\node (32) [process, below of =31] {Q\_Y\_POSITION -= 4};
+        \node (33) [process, right of=3, xshift=4cm] {Q\_X\_POSITION -=5};
+        \node (34) [process, below of =33] {Q\_Y\_POSITION -= 2};
+	
+        \draw[arrow] (0) -- (1);
+        \draw[arrow] (1) -- node [anchor=west] {no} (2);
+        \draw[arrow] (2) -- node [anchor=west] {no} (3);
+        \draw[arrow] (3) -- node [anchor=west] {no} (4);
+        \draw[arrow] (4) -- node [anchor=south] {no} ([xshift=2cm]4.east) |- (9);
+        \draw[arrow] (5) -- (6);
+        \draw[arrow] (6) -- (7);
+        \draw[arrow] (7) -- (8);
+        \draw[arrow] (8) -- node [anchor=west] {no} (9);
+        \draw[arrow] (31) -- (32);
+        \draw[arrow] (33) -- (34);
+        \draw[arrow] (8) -- node [anchor=south] {yes} (25);
+        \draw[arrow] (1) -- node [anchor=south] {yes} (31);
+        \draw[arrow] (2) -- node [anchor=south] {yes} (21);
+        \draw[arrow] (3) -- node [anchor=south] {yes} (33);
+        \draw[arrow] (4) -- node [anchor=south] {yes} (23);
+        \draw[arrow] (21) -- (22);
+        \draw[arrow] (22) -- ([xshift=-1cm]22.west) |- (5);
+        \draw[arrow] (24) |- (5);
+        \draw[arrow] (31) -- ([xshift=1cm]31.east) |- (5);
+        \draw[arrow] (34) |- (5);
+        \draw[arrow] (23) -- (24);
+        \draw[arrow] (25) |- (9);
+    \end{tikzpicture}
+  \end{center}
+
+\newpage
+  \subsection{removeLife Routine}
+   \indent
+	This routine doubles the speed that the character moves across
+	the puTTy terminal. 
+   \vskip 8pt
+   \noindent
+   {\bf Usage }\\
+  	Load the current value in the timer match1 register. Divide the value
+	in half and store the new value in the timer match1 register. 
+ \vskip 8pt
+  \noindent
+
+%\newpage
+  \subsubsection{removeLife Flow Chart}
+  \begin{center}
+    \begin{tikzpicture}[node distance=2cm, scale=.50, transform shape]
+      \node (0) [startstop] {start};
+      \node (1) [process, below of=0] {BLINK = 10};
+      \node (2) [process, below of=1] {LIVES -= 1};
+      \node (3) [decision, below of=2, yshift=-1cm] {LIVES = 3?};
+      \node (4) [decision, below of=3, yshift=-1cm] {LIVES = 2?};
+      \node (5) [decision, below of=4, yshift=-1cm] {LIVES = 1?};
+      \node (6) [process, below of=5, yshift=-1cm] {Zero LEDs on};
+      \node (7) [process, below of=6] {GameOver};
+      \node (31) [process, right of=3, xshift=4cm] {3 LEDs on};
+      \node (32) [process, right of=4, xshift=4cm] {2 LEDs on};
+      \node (33) [process, right of=5, xshift=4cm] {1 LEDs on};
+      \node (8) [startstop, below of=7] {Stop};
+
+      \draw [arrow] (0) -- (1);
+      \draw [arrow] (1) -- (2);
+      \draw [arrow] (2) -- (3);
+      \draw [arrow] (6) -- (7);
+      \draw [arrow] (7) -- (8);
+     \draw [arrow] (3) -- node [anchor=west] {no} (4);
+     \draw [arrow] (4) -- node [anchor=west] {no} (5);
+     \draw [arrow] (5) -- node [anchor=west] {no} (6);
+      \draw [arrow] (3) -- node [anchor=south] {yes} (31);
+      \draw [arrow] (4) -- node [anchor=south] {yes} (32);
+      \draw [arrow] (5) -- node [anchor=south] {yes} (33);
+      \draw [arrow] (31) -- ([xshift=1cm]31.east) |- (8);
+      \draw [arrow] (32) -- ([xshift=1cm]32.east) |- (8);
+      \draw [arrow] (33) -- ([xshift=1cm]33.east) |- (8);
+    \end{tikzpicture}
+  \end{center}
+
+\newpage
+  \subsection{FIQ\_Handler Routine}
+   \indent
+	Code that handles the fast interrupts for Edge Sensitive Push Button EINT1, 
+	keyboard UART0, Timer0, and Timer1.	
+   \vskip 8pt
+   \noindent
+   {\bf Usage }\\
+  	If the push button was pressed, the interrupt is cleared, and the pauseGame 
+	subroutine is called. If Timer0 caused the interrupt, it is cleared and
+	handleMoves subroutine is called. Timer1 interrupt is a the two minute timer
+	which calls gameOver. UART interrupts are automatically cleared. Quit is called
+ 	if the space bar was pressed. NewGame is called if the 'g' was pressed. The 'a',
+	'w', 's', and 'd' keys set Q\_DIRECTION. After all interrupts are handled both
+	timer0 and time1 are re-enabled and FIQ\_Exit is called.    
+ \vskip 8pt
+  \noindent
+
+%\newpage
+  \subsubsection{FIQ\_Handler Flow Chart}
+  \begin{center}
+    \begin{tikzpicture}[node distance=2cm, scale=.50, transform shape]
+      \node (0) [startstop] {start};
+      \node (1) [decision, below of=0, yshift=-1cm] {EINT1 interrupt?};
+      \node (2) [decision, below of=1, yshift=-2cm] {Timer0 interrupt?};
+      \node (3) [decision, below of=2, yshift=-2cm] {Timer1 interrupt?};
+      \node (4) [decision, below of=3, yshift=-2cm] {UART interrupt?};
+      \node (5) [decision, below of=4, yshift=-2cm] {Space bar?};
+      \node (6) [decision, below of=5, yshift=-1cm] {'g'?};
+      \node (7) [decision, below of=6, yshift=-2cm] {IS\_GAMEOVER\_SCREEN set?};
+      \node (8) [decision, below of=7, yshift=-2cm] {'w'?};
+      \node (9) [decision, below of=8, yshift=-1cm] {'a'?};
+      \node (10) [decision, below of=9, yshift=-1cm] {'s'?};
+      \node (11) [decision, below of=10, yshift=-1cm] {'d'?};
+      \node (12) [process, below of=11] {Enable Timer0, and Timer1};
+      \node (13) [process, below of=12] {FIQ\_Exit};
+      \node (31) [process, right of=1, xshift=3cm] {Clear interrupt};
+      \node (32) [process, below of=31] {pauseGame};
+      \node (33) [process, right of=2, xshift=3cm] {Clear interrupt};
+      \node (34) [process, below of=33] {handleMoves};
+      \node (35) [process, right of=3, xshift=3cm] {Clear interrupt};
+      \node (36) [process, below of=35] {gameOver};
+      \node (37) [process, right of=5, xshift=3cm] {quit};
+      \node (38) [process, right of=6, xshift=3cm] {newGame};
+      \node (39) [process, right of=8, xshift=3cm] {Q\_DIRECTION = 1};
+      \node (40) [process, right of=9, xshift=3cm] {Q\_DIRECTION = 2};
+      \node (41) [process, right of=10, xshift=3cm] {Q\_DIRECTION = 3};
+      \node (42) [process, right of=11, xshift=3cm] {Q\_DIRECTION = 4};
+      \node (14) [startstop, below of=13] {Stop};
+
+      \draw [arrow] (0) -- (1);
+      \draw [arrow] (31) -- (32);
+      \draw [arrow] (33) -- (34);
+      \draw [arrow] (35) -- (36);
+      \draw [arrow] (12) -- (13);
+      \draw [arrow] (13) -- (14);
+     \draw [arrow] (1) -- node [anchor=west] {no} (2);
+     \draw [arrow] (2) -- node [anchor=west] {no} (3);
+     \draw [arrow] (3) -- node [anchor=west] {no} (4);
+     \draw [arrow] (4) -- node [anchor=west] {yes} (5);
+     \draw [arrow] (5) -- node [anchor=west] {no} (6);
+     \draw [arrow] (6) -- node [anchor=west] {no} (7);
+     \draw [arrow] (7) -- node [anchor=west] {no} (8);
+     \draw [arrow] (8) -- node [anchor=west] {no} (9);
+     \draw [arrow] (9) -- node [anchor=west] {no} (10);
+     \draw [arrow] (10) -- node [anchor=west] {no} (11);
+     \draw [arrow] (1) -- node [anchor=south] {yes} (31);
+     \draw [arrow] (2) -- node [anchor=south] {yes} (33);
+     \draw [arrow] (3) -- node [anchor=south] {yes} (35);
+     \draw [arrow] (5) -- node [anchor=south] {yes} (37);
+     \draw [arrow] (6) -- node [anchor=south] {yes} (38);
+     \draw [arrow] (8) -- node [anchor=south] {yes} (39);
+     \draw [arrow] (9) -- node [anchor=south] {yes} (40);
+     \draw [arrow] (10) -- node [anchor=south] {yes} (41);
+     \draw [arrow] (11) -- node [anchor=south] {yes} (42);
+      \draw [arrow] (32) -- ([xshift=1cm]32.east) |- (12);
+      \draw [arrow] (34) -- ([xshift=1cm]34.east) |- (12);
+      \draw [arrow] (36) -- ([xshift=1cm]36.east) |- (12);
+      \draw [arrow] (4) -- ([xshift=6cm]4.east) |- (12);
+      \draw [arrow] (38) -- ([xshift=1cm]38.east) |- (12);
+      \draw [arrow] (39) -- ([xshift=1cm]39.east) |- (12);
+      \draw [arrow] (40) -- ([xshift=1cm]40.east) |- (12);
+      \draw [arrow] (41) -- ([xshift=1cm]41.east) |- (12);
+      \draw [arrow] (42) -- ([xshift=1cm]42.east) |- (12);
+      \draw [arrow] (7) -- ([xshift=6cm]7.east) |- (12);
+    \end{tikzpicture}
+  \end{center}
+
+
+\newpage
+  \subsection{pauseGame Routine}
+   \indent
+	This routine pauses, or unpauses the game when the EINT1 push button
+	is pressed. No keyboard interrupts are handled when the game is paused.
+   \vskip 8pt
+   \noindent
+   {\bf Usage }\\
+  	IS\_PAUSED is loaded and checked to see if the game needs to be
+	paused, or unpaused. Whn paused, IS\_PAUSED is set, the RGB is set to blue, "PAUSE" is
+	displayed on puTTY, and both timers are stopped. Unpausing the game
+	sets the RGB back to green, clears IS\_PAUSED writes spaces over the 
+	"PAUSED" message on puTTY, and renanbles both timers.
+ \vskip 8pt
+  \noindent
+
+%\newpage
+  \subsubsection{pauseGame Flow Chart}
+  \begin{center}
+    \begin{tikzpicture}[node distance=2cm, scale=.50, transform shape]
+      \node (0) [startstop] {start};
+      \node (1) [decision, below of=0, yshift=-1cm] {IS\_PAUSED set?};
+      \node (2) [process, below of=1, yshift=-2cm] {Clear IS\_PAUSED};
+      \node (3) [process, below of=2] {Set RGB to green};
+      \node (4) [process, below of=3] {Write spaces over "PAUSED" on puTTY};
+      \node (5) [process, below of=4] {Re-enable Timer0, and Timer1};
+      \node (31) [process, right of=1, xshift=4cm] {Disable Timer0, and Timer1};
+      \node (32) [process, below of=31] {Set IS\_PAUSED};
+      \node (33) [process, below of=32] {Set RGB to blue};
+      \node (34) [process, below of=33] {Write "PAUSED" to puTTY screen};
+      \node (6) [startstop, below of=5] {Stop};
+
+      \draw [arrow] (0) -- (1);
+      \draw [arrow] (2) -- (3);
+      \draw [arrow] (3) -- (4);
+      \draw [arrow] (4) -- (5);
+      \draw [arrow] (5) -- (6);
+      \draw [arrow] (31) -- (32);
+      \draw [arrow] (32) -- (33);
+      \draw [arrow] (33) -- (34);
+     \draw [arrow] (1) -- node [anchor=south] {no} (31);
+     \draw [arrow] (1) -- node [anchor=west] {yes} (2);
+      \draw [arrow] (34) |- (6);
+    \end{tikzpicture}
+  \end{center}
+
+
+\newpage
+  \subsection{handleMoves Routine}
+   \indent
+	This routine determines when enemies should be spawned and when they should be moved.
+	It also controls how often the player can move Q'bert. Curses are also removed by 
+	from this subroutine. blinkOnDeath is called from here and will turn RGB red or off
+	if the player recently died.
+   \vskip 8pt
+   \noindent
+   {\bf Usage }\\
+	If IS\_GAMEOVER\_SCREEN is set then then no moves need to be handled, and routine 
+	goes straight to FIQ\_Exit. If the game has not been running for at least two
+	seconds then no enemies will be spawned. If there are aleady three enemies on the
+	pyramid then no more need to be spawned. ALl currently enemies are moved. Q'bert
+	is allowed another move. blinkOnDeath is called and RGB blinks red if a life was
+	recently lost.
+ \vskip 8pt
+  \noindent
+
+%\newpage
+  \subsubsection{handleMoves Flow Chart}
+  \begin{center}
+    \begin{tikzpicture}[node distance=2cm, scale=.50, transform shape]
+      \node (0) [startstop] {start};
+      \node (1) [decision, below of=0, yshift=-4cm] {IS\_GAMEOVER\_SCREEN set?};
+      \node (2) [decision, below of=1, yshift=-4cm] {Is NUM\_HALF\_SECS > 4?};
+      \node (3) [decision, below of=2, yshift=-4cm] {Is NUM\_BALLS < 3?};
+      \node (4) [process, below of=3, yshift=-2cm] {moveBall1};
+      \node (5) [process, below of=4] {moveBall2};
+      \node (6) [process, below of=5] {moveSnakeBall};
+      \node (7) [process, below of=6] {moveSnake};
+      \node (8) [process, below of=7] {Q\_MOVES = 1};
+      \node (9) [process, below of=8] {blinkOnDeath};
+      \node (10) [decision, below of=9, yshift=-2cm] {DISPLAY\_CURSE set?};
+      \node (11) [process, below of=10, yshift=-4cm] {FIQ\_Exit};
+      \node (31) [process, right of=3, xshift=4cm] {spawnEnemy};
+      \node (32) [process, right of=10, xshift=4cm] {clearCurse};
+      \node (12) [startstop, below of=11] {Stop};
+
+      \draw [arrow] (0) -- (1);
+     \draw [arrow] (1) -- node [anchor=west] {no} (2);
+     \draw [arrow] (2) -- node [anchor=west] {yes} (3);
+     \draw [arrow] (3) -- node [anchor=west] {no} (4);
+     \draw [arrow] (10) -- node [anchor=west] {no} (11);
+      \draw [arrow] (4) -- (5);
+      \draw [arrow] (5) -- (6);
+      \draw [arrow] (6) -- (7);
+      \draw [arrow] (7) -- (8);
+      \draw [arrow] (8) -- (9);
+      \draw [arrow] (9) -- (10);
+      \draw [arrow] (3) -- (31);
+     \draw [arrow] (3) -- node [anchor=south] {yes} (31);
+      \draw [arrow] (11) -- (12);
+     \draw [arrow] (31) |- (4);
+     \draw [arrow] (32) |- (12);
+     \draw [arrow] (10) -- node [anchor=south] {yes} (32);
+      \draw [arrow] (1) -- node [anchor=south] {yes}([xshift=6cm]1.east) |- (12);
+      \draw [arrow] (2) -- node [anchor=south] {no}([xshift=6cm]2.east) |- (12);
+    \end{tikzpicture}
+  \end{center}
+
+
+\newpage
+  \subsection{spawnEnemy Routine}
+   \indent
+	Spawns a new enemy depending on which enemies are already spawned as well
+	as random numbers.
+   \vskip 8pt
+   \noindent
+   {\bf Usage }\\
+	If a snake or snakeBall already occupy a square on the pyramid, a snakeball
+	will not spawn. If they are not already spawned there is a one in four
+	chance to spawn one. Otherwise if there is no ball1 then ball1 will spawn.
+	if there is already a ball1, then a ball2 will spawn.
+ \vskip 8pt
+  \noindent
+
+%\newpage
+  \subsubsection{spawnEnemy Flow Chart}
+  \begin{center}
+    \begin{tikzpicture}[node distance=2cm, scale=.50, transform shape]
+      \node (0) [startstop] {start};
+      \node (1) [decision, below of=0, yshift=-4cm] {SNAKE\_SQUARE OR SNAKEBALL\_SQUARE !=0?};
+      \node (3) [decision, below of=2, yshift=-1cm] {Is number = 4?};
+      \node (4) [decision, below of=3, yshift=-4cm] {BALL1\_SQUARE = 0?};
+      \node (2) [process, below of=1, yshift=-4cm] {random number 0-3};
+      \node (5) [process, below of=4, yshift=-2cm] {spawn ball1};
+      \node (31) [process, right of=3, xshift=4cm] {spawn snakeBall};
+      \node (32) [process, right of=4, xshift=4cm] {spawn ball2};
+      \node (6) [startstop, below of=5] {Stop};
+
+      \draw [arrow] (0) -- (1);
+     \draw [arrow] (1) -- node [anchor=west] {yes} (2);
+      \draw [arrow] (1) -- node [anchor=south] {no}([xshift=-2cm]1.west) |- (4);
+     \draw [arrow] (3) -- node [anchor=south] {yes} (31);
+     \draw [arrow] (3) -- node [anchor=west] {no} (4);
+     \draw [arrow] (4) -- node [anchor=south] {no} (32);
+      \draw [arrow] (2) -- (3);
+      \draw [arrow] (5) -- (6);
+     \draw [arrow] (4) -- node [anchor=west] {yes} (5);
+     \draw [arrow] (32) |- (6);
+    \end{tikzpicture}
+  \end{center}
+
+
+
+\newpage
+  \subsection{moveBall1 Routine}
+   \indent
+	Moves ball1 randomly down,or right.
+   \vskip 8pt
+   \noindent
+   {\bf Usage }\\
+	Get a random number between 0-1. If it is a 0, move down, otherwise
+	move right. Remove the 'o'. Check if ball1 has moved off the pyramid. 
+	If not, draw 'o' in new square. 
+ \vskip 8pt
+  \noindent
+
+%\newpage
+  \subsubsection{moveBall1 Flow Chart}
+  \begin{center}
+    \begin{tikzpicture}[node distance=2cm, scale=.50, transform shape]
+      \node (0) [startstop] {start};
+      \node (1) [process, below of=0] {random number 0-1};
+      \node (2) [decision, below of=1, yshift=-1cm] {Number = 1?};
+      \node (3) [process, below of=2, yshift=-1cm] {Move down};
+      \node (4) [process, below of=3] {remove 'o'};
+      \node (5) [decision, below of=4, yshift=-1cm] {Ball1 off pyramid?};
+      \node (6) [process, below of=5, yshift=-1cm] {draw 'o'};
+      \node (31) [process, right of=2, xshift=4cm] {Move right};
+      \node (7) [startstop, below of=6] {Stop};
+
+      \draw [arrow] (0) -- (1);
+      \draw [arrow] (1) -- (2);
+     \draw [arrow] (2) -- node [anchor=south] {yes} (31);
+      \draw [arrow] (31) -- ([yshift=-2cm]31.south) |- (5.north);
+     \draw [arrow] (2) -- node [anchor=west] {no} (3);
+      \draw [arrow] (3) -- (4);
+      \draw [arrow] (4) -- (5);
+     \draw [arrow] (5) -- node [anchor=south] {yes}([xshift=2cm]5.east) |- (7);
+     \draw [arrow] (5) -- node [anchor=west] {no} (6);
+     \draw [arrow] (6) -- (7);
+    \end{tikzpicture}
+  \end{center}
+
+
+\newpage
+  \subsection{moveBall2 Routine}
+   \indent
+	Moves ball2 randomly down,or right.
+   \vskip 8pt
+   \noindent
+   {\bf Usage }\\
+	Get a random number between 0-1. If it is a 0, move down, otherwise
+	move right. Remove the 'o'. Check if ball2 has moved off the pyramid. 
+	If not, draw 'o' in new square. 
+ \vskip 8pt
+  \noindent
+
+%\newpage
+  \subsubsection{moveBall2 Flow Chart}
+  \begin{center}
+    \begin{tikzpicture}[node distance=2cm, scale=.50, transform shape]
+      \node (0) [startstop] {start};
+      \node (1) [process, below of=0] {random number 0-1};
+      \node (2) [decision, below of=1, yshift=-1cm] {Number = 1?};
+      \node (3) [process, below of=2, yshift=-1cm] {Move down};
+      \node (4) [process, below of=3] {remove 'o'};
+      \node (5) [decision, below of=4, yshift=-1cm] {Ball2 off pyramid?};
+      \node (6) [process, below of=5, yshift=-1cm] {draw 'o'};
+      \node (31) [process, right of=2, xshift=4cm] {Move right};
+      \node (7) [startstop, below of=6] {Stop};
+
+      \draw [arrow] (0) -- (1);
+      \draw [arrow] (1) -- (2);
+     \draw [arrow] (2) -- node [anchor=south] {yes} (31);
+     %\draw [arrow] (31) -| (5.north);
+      \draw [arrow] (31) -- ([yshift=-2cm]31.south) |- (5.north);
+     \draw [arrow] (2) -- node [anchor=west] {no} (3);
+      \draw [arrow] (3) -- (4);
+      \draw [arrow] (4) -- (5);
+     \draw [arrow] (5) -- node [anchor=south] {yes}([xshift=2cm]5.east) |- (7);
+     \draw [arrow] (5) -- node [anchor=west] {no} (6);
+     \draw [arrow] (6) -- (7);
+    \end{tikzpicture}
+  \end{center}
+
+
+\newpage
+  \subsection{moveSnakeBall Routine}
+   \indent
+	Moves snakeBall randomly down,or right. Spawns a snake when it reaches
+	bottom of pyramid
+   \vskip 8pt
+   \noindent
+   {\bf Usage }\\
+	Get a random number between 0-1. If it is a 0, move down, otherwise
+	move right. Remove the 'C'. Check if the snakeBall has moved off the pyramid. 
+	If not, draw 'C' in new square. If it has moved off the pyramid replace the
+	'C' in the bottom square with a 'S' for snake enemy.
+	 
+ \vskip 8pt
+  \noindent
+
+%\newpage
+  \subsubsection{moveSnakeBall Flow Chart}
+  \begin{center}
+    \begin{tikzpicture}[node distance=2cm, scale=.50, transform shape]
+      \node (0) [startstop] {start};
+      \node (1) [process, below of=0] {random number 0-1};
+      \node (2) [decision, below of=1, yshift=-1cm] {Number = 1?};
+      \node (3) [process, below of=2, yshift=-1cm] {Move down};
+      \node (4) [process, below of=3] {remove 'C'};
+      \node (5) [decision, below of=4, yshift=-3cm] {snakeBall off pyramid?};
+      \node (6) [process, below of=5, yshift=-3cm] {draw 'C'};
+      \node (31) [process, right of=2, xshift=4cm] {Move right};
+      \node (32) [process, right of=5, xshift=6cm] {SNAKE\_SQUARE = SNAKEBALL\_SQUARE};
+      \node (33) [process, below of=32] {Draw 'S'};
+      \node (7) [startstop, below of=6] {Stop};
+
+      \draw [arrow] (0) -- (1);
+      \draw [arrow] (1) -- (2);
+     \draw [arrow] (2) -- node [anchor=south] {yes} (31);
+      \draw [arrow] (31) -- ([yshift=-2cm]31.south) |- (5.north);
+     \draw [arrow] (2) -- node [anchor=west] {no} (3);
+      \draw [arrow] (3) -- (4);
+      \draw [arrow] (4) -- (5);
+     \draw [arrow] (5) -- node [anchor=south] {yes} (32);
+      \draw [arrow] (32) -- (33);
+      \draw [arrow] (33) |- (7);
+     \draw [arrow] (5) -- node [anchor=west] {no} (6);
+     \draw [arrow] (6) -- (7);
+    \end{tikzpicture}
+  \end{center}
+
+
+\newpage
+  \subsection{moveSnake Routine}
+   \indent
+	Moves the snake in the direction of Q'bert on the pyramid. Only one snake 
+	will be spawned at a time. 
+   \vskip 8pt
+   \noindent
+   {\bf Usage }\\
+	If the current Q\_SQUARE is above the SNAKE\_SQUARE move the snake up.
+	If the current Q\_SQUARE is below the SNAKE\_SQUARE move the snake down.
+	If the current Q\_SQUARE is left of the SNAKE\_SQUARE move the snake left.
+	If the current Q\_SQUARE is right of the SNAKE\_SQUARE move the snake right.
+ \vskip 8pt
+  \noindent
+
+%\newpage
+  \subsubsection{moveSnake Flow Chart}
+  \begin{center}
+    \begin{tikzpicture}[node distance=2cm, scale=.50, transform shape]
+      \node (0) [startstop] {start};
+      \node (1) [decision, below of=0, yshift=-3cm] {Q\_SQUARE above SNAKE\_SQUARE?};
+      \node (2) [decision, below of=1, yshift=-6cm] {Q\_SQUARE below SNAKE\_SQUARE??};
+      \node (3) [decision, below of=2, yshift=-6cm] {Q\_SQUARE left of SNAKE\_SQUARE?};
+      \node (4) [process, below of=3, yshift=-3cm] {move right};
+      \node (31) [process, right of=1, xshift=5cm] {move up};
+      \node (32) [process, right of=2, xshift=5cm] {move down};
+      \node (33) [process, right of=3, xshift=5cm] {move left};
+      \node (5) [startstop, below of=4] {Stop};
+
+      \draw [arrow] (0) -- (1);
+     \draw [arrow] (1) -- node [anchor=south] {yes} (31);
+     \draw [arrow] (2) -- node [anchor=south] {yes} (32);
+     \draw [arrow] (3) -- node [anchor=south] {yes} (33);
+      \draw [arrow] (31) -- ([xshift=1cm]31.east) |- (5);
+      \draw [arrow] (32) -- ([xshift=1cm]32.east) |- (5);
+      \draw [arrow] (33) -- ([xshift=1cm]33.east) |- (5);
+     \draw [arrow] (1) -- node [anchor=west] {no} (2);
+     \draw [arrow] (2) -- node [anchor=west] {no} (3);
+     \draw [arrow] (3) -- node [anchor=west] {no} (4);
+      \draw [arrow] (4) -- (5);
+    \end{tikzpicture}
+  \end{center}
+
+
+\newpage
+  \subsection{randomNum Routine}
+   \indent
+	This routine take a number and generates a random number from zero through
+	the given number minus one.
+   \vskip 8pt
+   \noindent
+   {\bf Usage }\\
+	This routine gets the time from timer1 clocc register. This number is added to 
+	the number of lives the player has left, the squares that ball1 and ball2
+	are currently on. This total is then divided by the given number to generate
+	a remaineder of zero up to the number given minus one(i.e. if given the number
+	4 a number between 0-3 will be returned).
+ \vskip 8pt
+  \noindent
+
+%\newpage
+  \subsubsection{randomNum Flow Chart}
+  \begin{center}
+    \begin{tikzpicture}[node distance=2cm, scale=.50, transform shape]
+        \node (0) [startstop] {start};
+	\node (1) [process, below of=0] {y = number of randoms required};
+	\node (2) [process, below of=1] {x = get timer1 clock time};
+	\node (3) [process, below of=2] {x += Q\_SQUARE};
+	\node (4) [process, below of=3] {x += LIVES};
+	\node (5) [process, below of=4] {x += BALL1\_SQUARE};
+	\node (6) [process, below of=5] {x += BALL2\_SQUARE};
+	\node (7) [process, below of=6] {x div\_and\_mod y};
+	\node (8) [process, below of=7] {random number = remainder};
+        \node (9) [startstop, below of=8, yshift=-1cm] {Stop};
+    
+        \draw[arrow] (0) -- (1);
+        \draw[arrow] (1) -- (2);
+        \draw[arrow] (2) -- (3);
+        \draw[arrow] (3) -- (4);
+        \draw[arrow] (4) -- (5);
+        \draw[arrow] (5) -- (6);
+        \draw[arrow] (6) -- (7);
+        \draw[arrow] (7) -- (8);
+        \draw[arrow] (8) -- (9);
+    \end{tikzpicture}
+  \end{center}
+
+
+%end the document
+\end{document}

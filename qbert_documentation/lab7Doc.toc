@@ -1,0 +1,37 @@
+\contentsline {section}{\numberline {1}Lab 7 Overview}{2}
+\contentsline {subsection}{\numberline {1.1}Lab 7 Usage}{2}
+\contentsline {subsection}{\numberline {1.2}Division of Work}{2}
+\contentsline {subsection}{\numberline {1.3}Lab 7 Flow Chart}{3}
+\contentsline {section}{\numberline {2}Subroutines}{4}
+\contentsline {subsection}{\numberline {2.1}newGame Routine}{5}
+\contentsline {subsubsection}{\numberline {2.1.1}newGame Flow Chart}{5}
+\contentsline {subsection}{\numberline {2.2}gameOver Routine}{6}
+\contentsline {subsubsection}{\numberline {2.2.1}gameOver Flow Chart}{6}
+\contentsline {subsection}{\numberline {2.3}resetAllSquares Routine}{7}
+\contentsline {subsubsection}{\numberline {2.3.1}resetAllSquares Flow Chart}{7}
+\contentsline {subsection}{\numberline {2.4}increaseLevel Routine}{8}
+\contentsline {subsubsection}{\numberline {2.4.1}inreaseLevel Flow Chart}{8}
+\contentsline {subsection}{\numberline {2.5}removeQ Routine}{9}
+\contentsline {subsubsection}{\numberline {2.5.1}removeQ Flow Chart}{9}
+\contentsline {subsection}{\numberline {2.6}redrawQ Routine}{10}
+\contentsline {subsubsection}{\numberline {2.6.1}redrawQ Flow Chart}{11}
+\contentsline {subsection}{\numberline {2.7}removeLife Routine}{12}
+\contentsline {subsubsection}{\numberline {2.7.1}removeLife Flow Chart}{12}
+\contentsline {subsection}{\numberline {2.8}FIQ\_Handler Routine}{13}
+\contentsline {subsubsection}{\numberline {2.8.1}FIQ\_Handler Flow Chart}{14}
+\contentsline {subsection}{\numberline {2.9}pauseGame Routine}{15}
+\contentsline {subsubsection}{\numberline {2.9.1}pauseGame Flow Chart}{15}
+\contentsline {subsection}{\numberline {2.10}handleMoves Routine}{16}
+\contentsline {subsubsection}{\numberline {2.10.1}handleMoves Flow Chart}{17}
+\contentsline {subsection}{\numberline {2.11}spawnEnemy Routine}{18}
+\contentsline {subsubsection}{\numberline {2.11.1}spawnEnemy Flow Chart}{18}
+\contentsline {subsection}{\numberline {2.12}moveBall1 Routine}{19}
+\contentsline {subsubsection}{\numberline {2.12.1}moveBall1 Flow Chart}{19}
+\contentsline {subsection}{\numberline {2.13}moveBall2 Routine}{20}
+\contentsline {subsubsection}{\numberline {2.13.1}moveBall2 Flow Chart}{20}
+\contentsline {subsection}{\numberline {2.14}moveSnakeBall Routine}{21}
+\contentsline {subsubsection}{\numberline {2.14.1}moveSnakeBall Flow Chart}{21}
+\contentsline {subsection}{\numberline {2.15}moveSnake Routine}{22}
+\contentsline {subsubsection}{\numberline {2.15.1}moveSnake Flow Chart}{22}
+\contentsline {subsection}{\numberline {2.16}randomNum Routine}{23}
+\contentsline {subsubsection}{\numberline {2.16.1}randomNum Flow Chart}{23}
