@@ -1,0 +1,5 @@
+Dependencies for Project 'lab7', Target 'Target 1': (DO NOT MODIFY !)
+F (.\lab7.s)(0x5723C8D7)(--cpu ARM7TDMI --pd "__EVAL SETA 1" -g --apcs=interwork -I "C:\Keil\ARM\INC" -I "C:\Keil\ARM\INC\Philips" --list "lab7.lst" --xref -o "lab7.o")
+F (.\lab7wrapper.c)(0x56FD3DD5)(-c --cpu ARM7TDMI -D__EVAL -g -O0 --apcs=interwork -I "C:\Keil\ARM\INC" -I "C:\Keil\ARM\INC\Philips" -o "lab7wrapper.o" --omf_browse "lab7wrapper.crf" --depend "lab7wrapper.d")
+F (.\library.s)(0x571671DE)(--cpu ARM7TDMI --pd "__EVAL SETA 1" -g --apcs=interwork -I "C:\Keil\ARM\INC" -I "C:\Keil\ARM\INC\Philips" --list "library.lst" --xref -o "library.o")
+F (.\Startup.s)(0x5716696A)(--cpu ARM7TDMI --pd "__EVAL SETA 1" -g --apcs=interwork -I "C:\Keil\ARM\INC" -I "C:\Keil\ARM\INC\Philips" --list "Startup.lst" --xref -o "Startup.o")
